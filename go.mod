@@ -7,5 +7,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-github/v31 v31.0.0
 	github.com/rs/zerolog v1.18.0
+	go.seankhliao.com/usvc v0.1.4 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 )
