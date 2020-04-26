@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"flag"
 	"log"
 	"net/http"
@@ -75,10 +76,14 @@ func NewServer(args []string) *Server {
 	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
 	fs.StringVar(&s.srv.Addr, "addr", port, "host:port to serve on")
 	flag.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
-	flag.StringVar(&priv, "priv", os.Getenv("PRIVATE_KEY"), "github app private key literal")
+	flag.StringVar(&priv, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
 	fs.Parse(args[1:])
 
-	s.pkey = []byte(priv)
+	var err error
+	s.pkey, err = base64.StdEncoding.DecodeString(priv)
+	if err != nil {
+		s.log.Fatal().Err(err).Msg("decode private key")
+	}
 
 	return s
 }
