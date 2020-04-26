@@ -1,48 +1,24 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"flag"
-	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/google/go-github/v31/github"
-	"github.com/rs/zerolog"
+	"go.seankhliao.com/usvc"
 
 	"github.com/bradleyfalzon/ghinstallation"
 )
 
 var (
 	AppID int64 = 62448
-
-	port = func() string {
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = ":8080"
-		} else if port[0] != ':' {
-			port = ":" + port
-		}
-		return port
-	}()
 )
 
 func main() {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-		<-sigs
-		cancel()
-	}()
-
-	// server
-	NewServer(os.Args).Run(ctx)
+	s := NewServer(os.Args)
+	s.svc.Log.Error().Err(usvc.Run(usvc.SignalContext(), s.svc)).Msg("exited")
 }
 
 type Server struct {
@@ -50,31 +26,19 @@ type Server struct {
 	pkey          []byte
 
 	// server
-	log zerolog.Logger
-	mux *http.ServeMux
-	srv *http.Server
+	svc *usvc.ServerSimple
 }
 
 func NewServer(args []string) *Server {
+	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
 	s := &Server{
-		log: zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, NoColor: true, TimeFormat: time.RFC3339}).With().Timestamp().Logger(),
-		mux: http.NewServeMux(),
-		srv: &http.Server{
-			ReadHeaderTimeout: 5 * time.Second,
-			WriteTimeout:      5 * time.Second,
-			IdleTimeout:       60 * time.Second,
-		},
+		svc: usvc.NewServerSimple(usvc.NewConfig(fs)),
 	}
 
-	s.mux.Handle("/", http.RedirectHandler("https://github.com/seankhliao/github-defaults", http.StatusFound))
-	s.mux.Handle("/webhook", s)
-
-	s.srv.Handler = s.mux
-	s.srv.ErrorLog = log.New(s.log, "", 0)
+	s.svc.Mux.Handle("/", http.RedirectHandler("https://github.com/seankhliao/github-defaults", http.StatusFound))
+	s.svc.Mux.Handle("/webhook", s)
 
 	var priv string
-	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
-	fs.StringVar(&s.srv.Addr, "addr", port, "host:port to serve on")
 	flag.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
 	flag.StringVar(&priv, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
 	fs.Parse(args[1:])
@@ -82,36 +46,20 @@ func NewServer(args []string) *Server {
 	var err error
 	s.pkey, err = base64.StdEncoding.DecodeString(priv)
 	if err != nil {
-		s.log.Fatal().Err(err).Msg("decode private key")
+		s.svc.Log.Fatal().Err(err).Msg("decode private key")
 	}
-
 	return s
-}
-
-func (s *Server) Run(ctx context.Context) {
-	errc := make(chan error)
-	go func() {
-		errc <- s.srv.ListenAndServe()
-	}()
-
-	var err error
-	select {
-	case err = <-errc:
-	case <-ctx.Done():
-		err = s.srv.Shutdown(ctx)
-	}
-	s.log.Error().Err(err).Msg("server exit")
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload, err := github.ValidatePayload(r, []byte(s.WebHookSecret))
 	if err != nil {
-		s.log.Debug().Err(err).Msg("webhook validation failed")
+		s.svc.Log.Debug().Err(err).Msg("webhook validation failed")
 		return
 	}
 	event, err := github.ParseWebHook(github.WebHookType(r), payload)
 	if err != nil {
-		s.log.Debug().Err(err).Msg("webhook parse failed")
+		s.svc.Log.Debug().Err(err).Msg("webhook parse failed")
 		return
 	}
 
@@ -132,7 +80,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		itr, err := ghinstallation.New(
 			http.DefaultTransport, AppID, *event.Installation.ID, s.pkey)
 		if err != nil {
-			s.log.Error().Err(err).Msg("create gh installation")
+			s.svc.Log.Error().Err(err).Msg("create gh installation")
 			return
 		}
 		client := github.NewClient(&http.Client{Transport: itr})
@@ -142,9 +90,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_, _, err = client.Repositories.Edit(r.Context(), o, re, repo)
 		if err != nil {
-			s.log.Error().Err(err).Str("owner", o).Str("repo", re).Msg("edit repository")
+			s.svc.Log.Error().Err(err).Str("owner", o).Str("repo", re).Msg("edit repository")
 			return
 		}
-		s.log.Info().Str("owner", o).Str("repo", re).Msg("defaults set")
+		s.svc.Log.Info().Str("owner", o).Str("repo", re).Msg("defaults set")
 	}
 }
