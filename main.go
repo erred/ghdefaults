@@ -121,11 +121,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		repo := &github.Repository{
-			HasIssues:        github.Bool(false),
-			HasWiki:          github.Bool(false),
-			HasProjects:      github.Bool(false),
-			AllowMergeCommit: github.Bool(false),
-			AllowRebaseMerge: github.Bool(false),
+			HasIssues:           github.Bool(false),
+			HasWiki:             github.Bool(false),
+			HasProjects:         github.Bool(false),
+			AllowMergeCommit:    github.Bool(false),
+			AllowRebaseMerge:    github.Bool(false),
+			DeleteBranchOnMerge: github.Bool(true),
 		}
 
 		itr, err := ghinstallation.New(
