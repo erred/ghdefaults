@@ -46,6 +46,7 @@ func main() {
 
 type Server struct {
 	WebHookSecret string
+	pkey          []byte
 
 	// server
 	log zerolog.Logger
@@ -76,6 +77,8 @@ func NewServer(args []string) *Server {
 	flag.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
 	flag.StringVar(&priv, "priv", os.Getenv("PRIVATE_KEY"), "github app private key literal")
 	fs.Parse(args[1:])
+
+	s.pkey = []byte(priv)
 
 	return s
 }
@@ -120,8 +123,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			AllowRebaseMerge: github.Bool(false),
 		}
 
-		itr, err := ghinstallation.NewKeyFromFile(
-			http.DefaultTransport, AppID, *event.Installation.ID, "ghkey.pem")
+		itr, err := ghinstallation.New(
+			http.DefaultTransport, AppID, *event.Installation.ID, s.pkey)
 		if err != nil {
 			s.log.Error().Err(err).Msg("create gh installation")
 			return
