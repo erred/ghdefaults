@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/google/go-github/v32/github"
-	"github.com/rs/zerolog"
-
 	"github.com/bradleyfalzon/ghinstallation"
+	"github.com/google/go-github/github"
+	"github.com/rs/zerolog"
+	"go.seankhliao.com/usvc"
 )
 
 var (
@@ -18,7 +18,7 @@ var (
 )
 
 func main() {
-	var srvconf HTTPServerConf
+	var srvconf usvc.Conf
 	var s Server
 
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
