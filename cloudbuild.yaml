@@ -11,7 +11,7 @@ steps:
       - -c=.
       - -f=Dockerfile
       - -d=$_REG/$PROJECT_ID/$_IMG:latest
-      - -d=$_REG/$PROJECT_ID/$_IMG:$TAG_NAME
+      - -d=$_REG/$PROJECT_ID/$_IMG:$SHORT_SHA
       - --reproducible
       - --single-snapshot
   - id: deploy
