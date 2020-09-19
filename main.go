@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/bradleyfalzon/ghinstallation"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/rs/zerolog"
 	"go.seankhliao.com/usvc"
 )
