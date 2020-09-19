@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"flag"
 	"net/http"
 	"os"
 
-	"github.com/google/go-github/v31/github"
-	"go.seankhliao.com/usvc"
+	"github.com/google/go-github/v32/github"
+	"github.com/rs/zerolog"
 
 	"github.com/bradleyfalzon/ghinstallation"
 )
@@ -17,49 +18,60 @@ var (
 )
 
 func main() {
-	s := NewServer(os.Args)
-	s.svc.Log.Error().Err(usvc.Run(usvc.SignalContext(), s.svc)).Msg("exited")
+	var srvconf HTTPServerConf
+	var s Server
+
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	srvconf.RegisterFlags(fs)
+	s.RegisterFlags(fs)
+	fs.Parse(os.Args[1:])
+
+	s.log = zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	var err error
+	s.pkey, err = base64.StdEncoding.DecodeString(s.privBase64)
+	if err != nil {
+		s.log.Error().Err(err).Msg("decode private key")
+	}
+
+	m := http.NewServeMux()
+	m.Handle("/", s)
+
+	_, run, err := srvconf.Server(m, s.log)
+	if err != nil {
+		s.log.Error().Err(err).Msg("prepare server")
+		os.Exit(1)
+	}
+
+	err = run(context.Background())
+	if err != nil {
+		s.log.Error().Err(err).Msg("exit")
+		os.Exit(1)
+	}
 }
 
 type Server struct {
 	WebHookSecret string
+	privBase64    string
 	pkey          []byte
 
-	// server
-	svc *usvc.ServerSimple
+	log zerolog.Logger
 }
 
-func NewServer(args []string) *Server {
-	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
-	s := &Server{
-		svc: usvc.NewServerSimple(usvc.NewConfig(fs)),
-	}
-
-	s.svc.Mux.Handle("/", http.RedirectHandler("https://github.com/seankhliao/github-defaults", http.StatusFound))
-	s.svc.Mux.Handle("/webhook", s)
-
-	var priv string
+func (s *Server) RegisterFlags(fs *flag.FlagSet) {
 	flag.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
-	flag.StringVar(&priv, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
-	fs.Parse(args[1:])
-
-	var err error
-	s.pkey, err = base64.StdEncoding.DecodeString(priv)
-	if err != nil {
-		s.svc.Log.Fatal().Err(err).Msg("decode private key")
-	}
-	return s
+	flag.StringVar(&s.privBase64, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload, err := github.ValidatePayload(r, []byte(s.WebHookSecret))
 	if err != nil {
-		s.svc.Log.Debug().Err(err).Msg("webhook validation failed")
+		s.log.Error().Err(err).Msg("webhook validation failed")
 		return
 	}
 	event, err := github.ParseWebHook(github.WebHookType(r), payload)
 	if err != nil {
-		s.svc.Log.Debug().Err(err).Msg("webhook parse failed")
+		s.log.Error().Err(err).Msg("webhook parse failed")
 		return
 	}
 
@@ -80,7 +92,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		itr, err := ghinstallation.New(
 			http.DefaultTransport, AppID, *event.Installation.ID, s.pkey)
 		if err != nil {
-			s.svc.Log.Error().Err(err).Msg("create gh installation")
+			s.log.Error().Err(err).Msg("create gh installation")
 			return
 		}
 		client := github.NewClient(&http.Client{Transport: itr})
@@ -90,9 +102,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_, _, err = client.Repositories.Edit(r.Context(), o, re, repo)
 		if err != nil {
-			s.svc.Log.Error().Err(err).Str("owner", o).Str("repo", re).Msg("edit repository")
+			s.log.Error().Err(err).Str("owner", o).Str("repo", re).Msg("edit repository")
 			return
 		}
-		s.svc.Log.Info().Str("owner", o).Str("repo", re).Msg("defaults set")
+		s.log.Info().Str("owner", o).Str("repo", re).Msg("defaults set")
 	}
 }

@@ -1,10 +1,9 @@
 FROM golang:alpine AS build
 
 WORKDIR /workspace
-ENV CGO_ENABLED=0
 RUN apk add --update --no-cache ca-certificates
 COPY . .
-RUN go build -o /bin/ghdefaults
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /bin/ghdefaults
 
 FROM scratch
 
