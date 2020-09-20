@@ -6,11 +6,14 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v32/github"
 	"github.com/rs/zerolog"
+	"go.seankhliao.com/stream"
 	"go.seankhliao.com/usvc"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -29,6 +32,13 @@ func main() {
 		s.log.Error().Err(err).Msg("decode private key")
 	}
 
+	cc, err := grpc.Dial(s.streamAddr)
+	if err != nil {
+		s.log.Error().Err(err).Msg("connect to stream")
+	}
+	defer cc.Close()
+	s.client = stream.NewStreamClient(cc)
+
 	m := http.NewServeMux()
 	m.Handle("/", s)
 
@@ -44,14 +54,20 @@ type Server struct {
 	pkey          []byte
 
 	log zerolog.Logger
+
+	streamAddr string
+	client     stream.StreamClient
 }
 
 func (s *Server) RegisterFlags(fs *flag.FlagSet) {
 	flag.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
 	flag.StringVar(&s.privBase64, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
+	fs.StringVar(&s.streamAddr, "stream.addr", "stream:80", "url to connect to stream")
 }
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	payload, err := github.ValidatePayload(r, []byte(s.WebHookSecret))
 	if err != nil {
 		s.log.Error().Err(err).Msg("webhook validation failed")
@@ -94,5 +110,16 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.log.Info().Str("owner", o).Str("repo", re).Msg("defaults set")
+
+		repoRequest := &stream.RepoRequest{
+			Timestamp: time.Now().Format(time.RFC3339),
+			Owner:     o,
+			Repo:      re,
+		}
+
+		_, err = s.client.LogRepo(ctx, repoRequest)
+		if err != nil {
+			s.log.Error().Err(err).Msg("write to stream")
+		}
 	}
 }

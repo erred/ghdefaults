@@ -3,6 +3,7 @@
 .github/
 .gitignore
 
+cloudbuild.yaml
 Dockerfile
 LICENSE
 Makefile
