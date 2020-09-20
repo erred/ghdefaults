@@ -32,7 +32,7 @@ func main() {
 	m := http.NewServeMux()
 	m.Handle("/", s)
 
-	err = srvc.RunServer(context.Background(), m, s.log)
+	err = srvc.RunHTTP(context.Background(), m)
 	if err != nil {
 		s.log.Fatal().Err(err).Msg("run server")
 	}
