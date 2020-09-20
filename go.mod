@@ -7,6 +7,6 @@ require (
 	github.com/google/go-github/v32 v32.1.0
 	github.com/rs/zerolog v1.18.0
 	go.seankhliao.com/stream v0.1.0
-	go.seankhliao.com/usvc v0.4.1
+	go.seankhliao.com/usvc v0.5.0
 	google.golang.org/grpc v1.32.0
 )

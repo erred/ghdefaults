@@ -129,6 +129,8 @@ go.seankhliao.com/stream v0.1.0/go.mod h1:lAknH/xs4H7FYCLVpbVBpT1UgAdR7H5uD0gt46
 go.seankhliao.com/usvc v0.4.0/go.mod h1:HjOdYRx3daJBXmU+dbLGO3UXI7x7zxG7Jw2zkfWFSeo=
 go.seankhliao.com/usvc v0.4.1 h1:KghHHs/q2/8yGs2+HyX2VNLA3PZtnEe21koAPRLp9uk=
 go.seankhliao.com/usvc v0.4.1/go.mod h1:HjOdYRx3daJBXmU+dbLGO3UXI7x7zxG7Jw2zkfWFSeo=
+go.seankhliao.com/usvc v0.5.0 h1:iMOn7ytaWsWv7JBlAuhuD5NyO9bXoNfUdcdDHdDa1iM=
+go.seankhliao.com/usvc v0.5.0/go.mod h1:HjOdYRx3daJBXmU+dbLGO3UXI7x7zxG7Jw2zkfWFSeo=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
