@@ -32,7 +32,7 @@ func main() {
 		s.log.Error().Err(err).Msg("decode private key")
 	}
 
-	cc, err := grpc.Dial(s.streamAddr)
+	cc, err := grpc.Dial(s.streamAddr, grpc.WithInsecure())
 	if err != nil {
 		s.log.Error().Err(err).Msg("connect to stream")
 	}
