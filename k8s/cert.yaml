@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/name: ghdefaults
+  name: ghdefaults
+spec:
+  secretName: ghdefaults-cert
+  duration: 87600h # 10 years
+  renewBefore: 360h
+  dnsNames:
+    - "ghdefaults"
+    - "ghdefaults.default"
+    - "ghdefaults.default.svc"
+    - "ghdefaults.default.svc.cluster.local"
+  issuerRef:
+    name: internal-ca
+    kind: ClusterIssuer
