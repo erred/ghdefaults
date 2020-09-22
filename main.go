@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -17,35 +18,14 @@ import (
 )
 
 var (
+	name        = "ghdefaults"
 	AppID int64 = 62448
 )
 
 func main() {
 	var s Server
 
-	srvc := usvc.DefaultConf(&s)
-	s.log = srvc.Logger()
-
-	var err error
-	s.pkey, err = base64.StdEncoding.DecodeString(s.privBase64)
-	if err != nil {
-		s.log.Error().Err(err).Msg("decode private key")
-	}
-
-	cc, err := grpc.Dial(s.streamAddr, grpc.WithInsecure())
-	if err != nil {
-		s.log.Error().Err(err).Msg("connect to stream")
-	}
-	defer cc.Close()
-	s.client = stream.NewStreamClient(cc)
-
-	m := http.NewServeMux()
-	m.Handle("/", s)
-
-	err = srvc.RunHTTP(context.Background(), m)
-	if err != nil {
-		s.log.Fatal().Err(err).Msg("run server")
-	}
+	usvc.Run(context.Background(), name, &s, false)
 }
 
 type Server struct {
@@ -57,12 +37,36 @@ type Server struct {
 
 	streamAddr string
 	client     stream.StreamClient
+	cc         *grpc.ClientConn
 }
 
-func (s *Server) RegisterFlags(fs *flag.FlagSet) {
-	flag.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
-	flag.StringVar(&s.privBase64, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
+func (s *Server) Flag(fs *flag.FlagSet) {
+	fs.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
+	fs.StringVar(&s.privBase64, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
 	fs.StringVar(&s.streamAddr, "stream.addr", "stream:80", "url to connect to stream")
+}
+
+func (s *Server) Register(c *usvc.Components) error {
+	s.log = c.Log
+
+	var err error
+	s.pkey, err = base64.StdEncoding.DecodeString(s.privBase64)
+	if err != nil {
+		s.log.Error().Err(err).Msg("decode private key")
+	}
+
+	c.HTTP.Handle("/", s)
+
+	s.cc, err = grpc.Dial(s.streamAddr, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("connect to stream: %w", err)
+	}
+	s.client = stream.NewStreamClient(s.cc)
+	return nil
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.cc.Close()
 }
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
