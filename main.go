@@ -10,18 +10,18 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/google/go-github/v32/github"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/api/trace"
 	"go.seankhliao.com/usvc"
 )
 
 var (
-	name        = "ghdefaults"
+	name        = "go.seankhliao.com/ghdefaults"
 	AppID int64 = 62448
 )
 
 func main() {
-	var s Server
-
-	usvc.Run(context.Background(), name, &s, false)
+	os.Exit(usvc.Exec(context.Background(), &Server{}, os.Args))
 }
 
 type Server struct {
@@ -29,16 +29,18 @@ type Server struct {
 	privBase64    string
 	pkey          []byte
 
-	log zerolog.Logger
+	log    zerolog.Logger
+	tracer trace.Tracer
 }
 
-func (s *Server) Flag(fs *flag.FlagSet) {
+func (s *Server) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&s.WebHookSecret, "webhook-secret", os.Getenv("WEBHOOK_SECRET"), "webhook validation secret")
 	fs.StringVar(&s.privBase64, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
 }
 
-func (s *Server) Register(c *usvc.Components) error {
-	s.log = c.Log
+func (s *Server) Setup(ctx context.Context, c *usvc.USVC) error {
+	s.log = c.Logger
+	s.tracer = global.Tracer(name)
 
 	var err error
 	s.pkey, err = base64.StdEncoding.DecodeString(s.privBase64)
@@ -46,15 +48,14 @@ func (s *Server) Register(c *usvc.Components) error {
 		s.log.Error().Err(err).Msg("decode private key")
 	}
 
-	c.HTTP.Handle("/", s)
-	return nil
-}
-
-func (s *Server) Shutdown(ctx context.Context) error {
+	c.ServiceMux.Handle("/", s)
 	return nil
 }
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx, span := s.tracer.Start(r.Context(), "serve")
+	defer span.End()
+
 	payload, err := github.ValidatePayload(r, []byte(s.WebHookSecret))
 	if err != nil {
 		s.log.Error().Err(err).Msg("webhook validation failed")
@@ -90,8 +91,9 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		o := *event.Repo.Owner.Login
 		re := *event.Repo.Name
-
-		_, _, err = client.Repositories.Edit(r.Context(), o, re, repo)
+		ctx, span := s.tracer.Start(ctx, "edit repo")
+		defer span.End()
+		_, _, err = client.Repositories.Edit(ctx, o, re, repo)
 		if err != nil {
 			s.log.Error().Err(err).Str("owner", o).Str("repo", re).Msg("edit repository")
 			return
