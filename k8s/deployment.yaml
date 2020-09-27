@@ -38,11 +38,11 @@ spec:
           envFrom:
             - secretRef:
                 name: ghdefaults
-          readinessProbe:
-            httpGet:
-              path: /liveliness
-              port: 8000
           livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 8000
+          readinessProbe:
             httpGet:
               path: /readiness
               port: 8000

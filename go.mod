@@ -7,5 +7,5 @@ require (
 	github.com/google/go-github/v32 v32.1.0
 	github.com/rs/zerolog v1.18.0
 	go.opentelemetry.io/otel v0.12.0
-	go.seankhliao.com/usvc v0.8.3
+	go.seankhliao.com/usvc v0.8.4
 )

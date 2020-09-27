@@ -38,8 +38,8 @@ func (s *Server) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&s.privBase64, "priv", os.Getenv("PRIVATE_KEY"), "base64 encoded private key")
 }
 
-func (s *Server) Setup(ctx context.Context, c *usvc.USVC) error {
-	s.log = c.Logger
+func (s *Server) Setup(ctx context.Context, u *usvc.USVC) error {
+	s.log = u.Logger
 	s.tracer = global.Tracer(name)
 
 	var err error
@@ -48,7 +48,7 @@ func (s *Server) Setup(ctx context.Context, c *usvc.USVC) error {
 		s.log.Error().Err(err).Msg("decode private key")
 	}
 
-	c.ServiceMux.Handle("/", s)
+	u.ServiceMux.Handle("/", s)
 	return nil
 }
 
