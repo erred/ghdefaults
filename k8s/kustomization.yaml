@@ -11,5 +11,5 @@ resources:
   - service.k8s.yaml
 images:
   - name: us.gcr.io/com-seankhliao/ghdefaults
-    newName: seankhliao/ghdefaults
+    newName: reg.seankhliao.com/ghdefaults
     # newTag: IMAGE_TAG
