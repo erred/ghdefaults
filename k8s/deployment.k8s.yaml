@@ -27,6 +27,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
       terminationGracePeriodSeconds: 10
+      imagePullSecrets:
+        - name: regcred
       containers:
         - name: ghdefaults
           image: us.gcr.io/com-seankhliao/ghdefaults:latest
