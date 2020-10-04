@@ -10,9 +10,7 @@ spec:
   renewBefore: 360h
   dnsNames:
     - "ghdefaults"
-    - "ghdefaults.default"
-    - "ghdefaults.default.svc"
-    - "ghdefaults.default.svc.cluster.local"
+    - "ghdefaults.apps.svc.cluster.local"
   issuerRef:
     name: internal-ca
     kind: ClusterIssuer

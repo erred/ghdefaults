@@ -1,10 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+commonLabels:
+  app.kubernetes.io/name: ghdefaults
+  app.kubernetes.io/managed-by: kustomize
+namespace: apps
 resources:
   - cert.yaml
-  # - secret.yaml
-  - service.yaml
-  - deployment.yaml
+  # - secret.k8s.yaml
+  - deployment.k8s.yaml
+  - service.k8s.yaml
 images:
   - name: us.gcr.io/com-seankhliao/ghdefaults
+    newName: seankhliao/ghdefaults
     # newTag: IMAGE_TAG
