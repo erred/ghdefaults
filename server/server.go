@@ -65,6 +65,7 @@ func (s *Server) Register(c *envflag.Config) {
 
 func (s *Server) Init(ctx context.Context, t svcrunner.Tools) error {
 	s.log = t.Log.WithName("ghdefaults")
+	s.privateKey += "\n"
 	return nil
 }
 
