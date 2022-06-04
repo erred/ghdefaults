@@ -7,7 +7,7 @@ import (
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/go-logr/logr"
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v45/github"
 	"go.seankhliao.com/svcrunner"
 	"go.seankhliao.com/svcrunner/envflag"
 	"golang.org/x/oauth2"
@@ -16,6 +16,8 @@ import (
 var defaultConfig = map[string]github.Repository{
 	"erred": {
 		AllowMergeCommit:    github.Bool(false),
+		AllowUpdateBranch:   github.Bool(true),
+		AllowAutoMerge:      github.Bool(true),
 		AllowSquashMerge:    github.Bool(true),
 		AllowRebaseMerge:    github.Bool(false),
 		DeleteBranchOnMerge: github.Bool(true),
@@ -23,11 +25,14 @@ var defaultConfig = map[string]github.Repository{
 		HasWiki:             github.Bool(false),
 		HasPages:            github.Bool(false),
 		HasProjects:         github.Bool(false),
+		HasDownloads:        github.Bool(false),
 		IsTemplate:          github.Bool(false),
 		Archived:            github.Bool(true),
 	},
 	"seankhliao": {
 		AllowMergeCommit:    github.Bool(false),
+		AllowUpdateBranch:   github.Bool(true),
+		AllowAutoMerge:      github.Bool(true),
 		AllowSquashMerge:    github.Bool(true),
 		AllowRebaseMerge:    github.Bool(false),
 		DeleteBranchOnMerge: github.Bool(true),
@@ -35,6 +40,7 @@ var defaultConfig = map[string]github.Repository{
 		HasWiki:             github.Bool(false),
 		HasPages:            github.Bool(false),
 		HasProjects:         github.Bool(false),
+		HasDownloads:        github.Bool(false),
 		IsTemplate:          github.Bool(false),
 	},
 }
