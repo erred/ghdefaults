@@ -50,6 +50,9 @@ type Server struct {
 
 func New(hs *http.Server) *Server {
 	s := &Server{}
+	mux := http.NewServeMux()
+	mux.Handle("/webhook", s)
+	hs.Handler = mux
 	return s
 }
 
