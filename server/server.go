@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/go-logr/logr"
@@ -42,11 +40,10 @@ var defaultConfig = map[string]github.Repository{
 }
 
 type Server struct {
-	appKeyFile     string
-	hookSecretFile string
-	appID          int64
-	appKey         []byte
-	hookSecret     []byte
+	clientSecret  string // not used?
+	webhookSecret string
+	privateKey    string
+	appID         int64
 
 	log logr.Logger
 }
@@ -58,25 +55,13 @@ func New(hs *http.Server) *Server {
 
 func (s *Server) Register(c *envflag.Config) {
 	c.Int64Var(&s.appID, "ghdefaults.app-id", 0, "github app id")
-
-	c.StringVar(&s.appKeyFile, "gh.app-key-file", "/etc/mono/ghdefaults/github.pem", "file with github aoo key")
-	c.StringVar(&s.hookSecretFile, "gh.webhook-secret-file", "/etc/mono/ghdefaults/WEBHOOK_SECRET", "file with shared webhook secret")
+	c.StringVar(&s.clientSecret, "ghdefaults.client-secret", "", "client secret")
+	c.StringVar(&s.webhookSecret, "ghdefaults.webhook-secret", "", "webhook shared secret")
+	c.StringVar(&s.privateKey, "ghdefaults.private-key", "", "private key")
 }
 
 func (s *Server) Init(ctx context.Context, t svcrunner.Tools) error {
 	s.log = t.Log.WithName("ghdefaults")
-
-	var err error
-	s.appKey, err = os.ReadFile(s.appKeyFile)
-	if err != nil {
-		return fmt.Errorf("read app key file %s: %w", s.appKeyFile, err)
-	}
-	s.appKey = bytes.TrimSpace(s.appKey)
-	s.hookSecret, err = os.ReadFile(s.hookSecretFile)
-	if err != nil {
-		return fmt.Errorf("read shared webhook file %s: %w", s.hookSecretFile, err)
-	}
-	s.hookSecret = bytes.TrimSpace(s.hookSecret)
 	return nil
 }
 
@@ -101,7 +86,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getPayload(ctx context.Context, r *http.Request) (any, string, error) {
-	payload, err := github.ValidatePayload(r, s.hookSecret)
+	payload, err := github.ValidatePayload(r, []byte(s.webhookSecret))
 	if err != nil {
 		return nil, "", fmt.Errorf("validate: %w", err)
 	}
@@ -162,7 +147,7 @@ func (s *Server) repoEvent(ctx context.Context, rw http.ResponseWriter, event *g
 func (s *Server) setDefaults(ctx context.Context, installID int64, owner, repo string) error {
 	config := defaultConfig[owner]
 	tr := http.DefaultTransport
-	tr, err := ghinstallation.NewAppsTransport(tr, s.appID, s.appKey)
+	tr, err := ghinstallation.NewAppsTransport(tr, s.appID, []byte(s.privateKey))
 	if err != nil {
 		return fmt.Errorf("create ghinstallation transport: %w", err)
 	}
