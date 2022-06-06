@@ -6,7 +6,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-github/v45 v45.0.0
-	go.seankhliao.com/svcrunner v0.1.5
+	go.seankhliao.com/svcrunner v0.1.6
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401
 )
 
