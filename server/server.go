@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -12,6 +13,8 @@ import (
 	"go.seankhliao.com/svcrunner/envflag"
 	"golang.org/x/oauth2"
 )
+
+var ErrSetDefaults = errors.New("errors setting repo defaults")
 
 var defaultConfig = map[string]github.Repository{
 	"erred": {
@@ -81,18 +84,27 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	event, eventType, err := s.getPayload(ctx, r)
 	if err != nil {
 		http.Error(rw, "invalid payload", http.StatusBadRequest)
-		s.log.Error(err, "invalid payload", "user_agent", r.UserAgent())
+		s.log.Error(err, "invalid payload")
 		return
 	}
 
+	log := s.log.WithValues("event_type", eventType)
+
 	switch event := event.(type) {
 	case *github.InstallationEvent:
-		s.installEvent(ctx, event)
+		err = s.installEvent(ctx, log, event)
 	case *github.RepositoryEvent:
-		s.repoEvent(ctx, rw, event)
+		err = s.repoEvent(ctx, log, event)
 	default:
-		s.log.Info("ignoring event", "event", eventType)
+		log.V(1).Info("ignoring event", "event", eventType)
 	}
+
+	// error should already be logged
+	if err != nil {
+		http.Error(rw, "error setting defaults", http.StatusInternalServerError)
+		return
+	}
+	rw.Write([]byte("ok"))
 }
 
 func (s *Server) getPayload(ctx context.Context, r *http.Request) (any, string, error) {
@@ -108,50 +120,62 @@ func (s *Server) getPayload(ctx context.Context, r *http.Request) (any, string, 
 	return event, eventType, nil
 }
 
-func (s *Server) installEvent(ctx context.Context, event *github.InstallationEvent) {
+func (s *Server) installEvent(ctx context.Context, log logr.Logger, event *github.InstallationEvent) error {
 	owner := *event.Installation.Account.Login
 	installID := *event.Installation.ID
+	log = log.WithValues("action", *event.Action)
+	var errs error
 	switch *event.Action {
 	case "created":
 		if _, ok := defaultConfig[owner]; !ok {
-			return
+			log.V(1).Info("ignoring unknown owner")
+			return nil
 		}
 
-		s.log.Info("setting defaults", "repos", len(event.Repositories))
-		go func() {
-			for _, repo := range event.Repositories {
-				err := s.setDefaults(ctx, installID, owner, *repo.Name)
-				if err != nil {
-					s.log.Error(err, "setting default", "repo", owner+"/"+*repo.Name)
-					continue
-				}
-				s.log.Info("defaults set", "repo", owner+"/"+*repo.Name)
+		log.V(1).Info("setting defaults", "repos", len(event.Repositories))
+		for _, repo := range event.Repositories {
+			log := s.log.WithValues("repo", owner+"/"+*repo.Name)
+			err := s.setDefaults(ctx, installID, owner, *repo.Name)
+			if err != nil {
+				errs = ErrSetDefaults
+				log.Error(err, "setting defaults")
+				continue
 			}
-		}()
+		}
 	default:
-		s.log.Info("ignoring install action", "action", *event.Action)
+		log.V(1).Info("ignoring action")
+		return nil
 	}
+
+	if errs != nil {
+		return errs
+	}
+	log.Info("all defaults set")
+	return nil
 }
 
-func (s *Server) repoEvent(ctx context.Context, rw http.ResponseWriter, event *github.RepositoryEvent) {
+func (s *Server) repoEvent(ctx context.Context, log logr.Logger, event *github.RepositoryEvent) error {
 	installID := *event.Installation.ID
 	owner := *event.Repo.Owner.Login
 	repo := *event.Repo.Name
+	log = log.WithValues("action", *event.Action, "repo", owner+"/"+repo)
 	switch *event.Action {
 	case "created", "transferred":
 		if _, ok := defaultConfig[owner]; !ok {
-			return
+			log.V(1).Info("ignoring unknown owner")
+			return nil
 		}
 		err := s.setDefaults(ctx, installID, owner, repo)
 		if err != nil {
-			s.log.Error(err, "setting defaults", "repo", owner+"/"+repo)
-			http.Error(rw, "set defaults", http.StatusInternalServerError)
-			return
+			log.Error(err, "setting defaults")
+			return ErrSetDefaults
 		}
-		s.log.Info("defaults set", "repo", owner+"/"+repo)
 	default:
-		s.log.Info("ignoring repo action", "action", *event.Action)
+		log.V(1).Info("ignoring action")
+		return nil
 	}
+	log.Info("defaults set")
+	return nil
 }
 
 func (s *Server) setDefaults(ctx context.Context, installID int64, owner, repo string) error {
