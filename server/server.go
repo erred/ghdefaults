@@ -9,6 +9,9 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/v45/github"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"go.seankhliao.com/svcrunner"
 	"go.seankhliao.com/svcrunner/envflag"
 	"golang.org/x/oauth2"
@@ -54,7 +57,8 @@ type Server struct {
 	privateKey    string
 	appID         int64
 
-	log logr.Logger
+	log   logr.Logger
+	trace trace.Tracer
 }
 
 func New(hs *http.Server) *Server {
@@ -74,12 +78,15 @@ func (s *Server) Register(c *envflag.Config) {
 
 func (s *Server) Init(ctx context.Context, t svcrunner.Tools) error {
 	s.log = t.Log.WithName("ghdefaults")
+	s.trace = otel.Tracer("ghdefaults")
+
 	s.privateKey += "\n"
 	return nil
 }
 
 func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx, span := s.trace.Start(r.Context(), "dispatch-event-type")
+	defer span.End()
 
 	event, eventType, err := s.getPayload(ctx, r)
 	if err != nil {
@@ -108,6 +115,9 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getPayload(ctx context.Context, r *http.Request) (any, string, error) {
+	ctx, span := s.trace.Start(ctx, "extract-payload")
+	defer span.End()
+
 	payload, err := github.ValidatePayload(r, []byte(s.webhookSecret))
 	if err != nil {
 		return nil, "", fmt.Errorf("validate: %w", err)
@@ -121,6 +131,9 @@ func (s *Server) getPayload(ctx context.Context, r *http.Request) (any, string, 
 }
 
 func (s *Server) installEvent(ctx context.Context, log logr.Logger, event *github.InstallationEvent) error {
+	ctx, span := s.trace.Start(ctx, "install-event")
+	defer span.End()
+
 	owner := *event.Installation.Account.Login
 	installID := *event.Installation.ID
 	log = log.WithValues("action", *event.Action)
@@ -155,6 +168,9 @@ func (s *Server) installEvent(ctx context.Context, log logr.Logger, event *githu
 }
 
 func (s *Server) repoEvent(ctx context.Context, log logr.Logger, event *github.RepositoryEvent) error {
+	ctx, span := s.trace.Start(ctx, "repo-event")
+	defer span.End()
+
 	installID := *event.Installation.ID
 	owner := *event.Repo.Owner.Login
 	repo := *event.Repo.Name
@@ -179,22 +195,25 @@ func (s *Server) repoEvent(ctx context.Context, log logr.Logger, event *github.R
 }
 
 func (s *Server) setDefaults(ctx context.Context, installID int64, owner, repo string) error {
+	ctx, span := s.trace.Start(ctx, "set-defaults")
+	defer span.End()
+
 	config := defaultConfig[owner]
 	tr := http.DefaultTransport
 	tr, err := ghinstallation.NewAppsTransport(tr, s.appID, []byte(s.privateKey))
 	if err != nil {
 		return fmt.Errorf("create ghinstallation transport: %w", err)
 	}
-	client := github.NewClient(&http.Client{Transport: tr})
+	client := github.NewClient(&http.Client{Transport: otelhttp.NewTransport(tr)})
 	installToken, _, err := client.Apps.CreateInstallationToken(ctx, installID, nil)
 	if err != nil {
 		return fmt.Errorf("create installation token: %w", err)
 	}
 
 	client = github.NewClient(&http.Client{
-		Transport: &oauth2.Transport{
+		Transport: otelhttp.NewTransport(&oauth2.Transport{
 			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: *installToken.Token}),
-		},
+		}),
 	})
 
 	_, _, err = client.Repositories.Edit(ctx, owner, repo, &config)
