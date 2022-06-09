@@ -91,7 +91,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	event, eventType, err := s.getPayload(ctx, r)
 	if err != nil {
 		http.Error(rw, "invalid payload", http.StatusBadRequest)
-		s.log.Error(err, "invalid payload")
+		s.log.Error(err, "invalid payload", "ctx", ctx, "http_request", r)
 		return
 	}
 
@@ -145,25 +145,25 @@ func (s *Server) installEvent(ctx context.Context, log logr.Logger, event *githu
 			return nil
 		}
 
-		log.V(1).Info("setting defaults", "repos", len(event.Repositories))
+		log.V(1).Info("setting defaults", "repos", len(event.Repositories), "ctx", ctx)
 		for _, repo := range event.Repositories {
 			log := s.log.WithValues("repo", owner+"/"+*repo.Name)
 			err := s.setDefaults(ctx, installID, owner, *repo.Name)
 			if err != nil {
 				errs = ErrSetDefaults
-				log.Error(err, "setting defaults")
+				log.Error(err, "setting defaults", "ctx", ctx)
 				continue
 			}
 		}
 	default:
-		log.V(1).Info("ignoring action")
+		log.V(1).Info("ignoring action", "ctx", ctx)
 		return nil
 	}
 
 	if errs != nil {
 		return errs
 	}
-	log.Info("all defaults set")
+	log.Info("all defaults set", "ctx", ctx)
 	return nil
 }
 
@@ -178,19 +178,19 @@ func (s *Server) repoEvent(ctx context.Context, log logr.Logger, event *github.R
 	switch *event.Action {
 	case "created", "transferred":
 		if _, ok := defaultConfig[owner]; !ok {
-			log.V(1).Info("ignoring unknown owner")
+			log.V(1).Info("ignoring unknown owner", "ctx", ctx)
 			return nil
 		}
 		err := s.setDefaults(ctx, installID, owner, repo)
 		if err != nil {
-			log.Error(err, "setting defaults")
+			log.Error(err, "setting defaults", "ctx", ctx)
 			return ErrSetDefaults
 		}
 	default:
-		log.V(1).Info("ignoring action")
+		log.V(1).Info("ignoring action", "ctx", ctx)
 		return nil
 	}
-	log.Info("defaults set")
+	log.Info("defaults set", "ctx", ctx)
 	return nil
 }
 
