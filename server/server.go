@@ -115,7 +115,7 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getPayload(ctx context.Context, r *http.Request) (any, string, error) {
-	ctx, span := s.trace.Start(ctx, "extract-payload")
+	_, span := s.trace.Start(ctx, "extract-payload")
 	defer span.End()
 
 	payload, err := github.ValidatePayload(r, []byte(s.webhookSecret))
