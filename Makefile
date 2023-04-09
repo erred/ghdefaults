@@ -1,0 +1,9 @@
+.PHONY: validate
+validate:
+	go build ./...
+	go test -vet=all ./...
+	staticcheck ./...
+
+.PHONY: oci
+oci:
+	KO_DOCKER_REPO=ghcr.io/seankhliao/ghdefaults ko build --bare --image-label 'org.opencontainers.image.source=https://github.com/seankhliao/ghdefaults'
