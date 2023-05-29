@@ -1,6 +1,6 @@
 module go.seankhliao.com/ghdefaults/v2
 
-go 1.20
+go 1.21
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.3.0
@@ -101,7 +101,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230320173215-1fe4d14fc725 // indirect
 	google.golang.org/grpc v1.54.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
-	gvisor.dev/gvisor v0.0.0-20230328175328-162ed5ef888d // indirect
+	gvisor.dev/gvisor v0.0.0-20230504175454-7b0a1988a28f // indirect
 	inet.af/peercred v0.0.0-20210906144145-0893ea02156a // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	tailscale.com v1.1.1-0.20230408010101-e978299bf067 // indirect
