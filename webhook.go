@@ -1,19 +1,85 @@
-package serve
+package main
 
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v51/github"
+	"github.com/google/go-github/v53/github"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"go.seankhliao.com/svcrunner/v2/observability"
 	"golang.org/x/oauth2"
 )
+
+type Config struct {
+	o             observability.Config
+	address       string
+	webhookSecret string
+	appID         int64
+	privateKey    string
+}
+
+func (c *Config) SetFlags(fset *flag.FlagSet) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	c.o.SetFlags(fset)
+	fset.StringVar(&c.address, "http.addr", ":"+port, "http server address")
+
+	t := &http.Transport{}
+	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	t.RegisterProtocol("data", dataTransport{})
+	client := &http.Client{Transport: t}
+
+	fset.Func("gh.app.id", "file: or data: to github app id", func(s string) error {
+		val, err := getBody(client, s)
+		if err != nil {
+			return err
+		}
+		c.appID, err = strconv.ParseInt(val, 10, 64)
+		return err
+	})
+	fset.Func("gh.app.private-key", "file: or data: uri to private key", func(s string) (err error) {
+		c.privateKey, err = getBody(client, s)
+		return
+	})
+	fset.Func("gh.webhook.secret", "file: or data: uri to webhook secret", func(s string) (err error) {
+		c.webhookSecret, err = getBody(client, s)
+		return
+	})
+}
+
+type Server struct {
+	o             *observability.O
+	webhookSecret string
+	privateKey    string
+	appID         int64
+}
+
+func New(ctx context.Context, c Config, o *observability.O) *Server {
+	return &Server{
+		o:             o,
+		webhookSecret: strings.TrimSpace(c.webhookSecret),
+		privateKey:    c.privateKey + "\n",
+		appID:         c.appID,
+	}
+}
+
+func (s *Server) Register(mux *http.ServeMux) {
+	mux.Handle("/webhook", otelhttp.NewHandler(http.HandlerFunc(s.hWebhook), "hWebhook"))
+	mux.HandleFunc("/-/ready", func(rw http.ResponseWriter, r *http.Request) { rw.Write([]byte("ok")) })
+}
 
 var defaultConfig = map[string]github.Repository{
 	"erred": {
@@ -209,4 +275,25 @@ func (s *Server) setDefaults(ctx context.Context, installID int64, owner, repo s
 	}
 
 	return nil
+}
+
+type dataTransport struct{}
+
+func (dataTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		Body: io.NopCloser(strings.NewReader(req.URL.Opaque)),
+	}, nil
+}
+
+func getBody(client *http.Client, uri string) (string, error) {
+	res, err := client.Get(uri)
+	if err != nil {
+		return "", fmt.Errorf("get %q: %w", uri, err)
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("read %q: %w", uri, err)
+	}
+	return string(b), nil
 }

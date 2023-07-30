@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghdefaults
+spec:
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ghdefaults
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ghdefaults
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: auth
+          image: ghcr.io/seankhliao/ghdefaults
+          args:
+            - -gh.app.id=file:///var/run/secrets/github/app-id
+            - -gh.app.private-key=file:///var/run/secrets/github/private-key
+            - -gh.webhook.secret=file:///var/run/secrets/github/webhook-secret
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - mountPath: /var/run/secrets/github
+              name: secrets
+      volumes:
+        - name: secrets
+          secret:
+            secretName: ghdefaults
