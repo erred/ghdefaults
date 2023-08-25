@@ -13,5 +13,4 @@ namespace: ghdefaults
 
 resources:
   - deployment.k8s.yaml
-  - httproute.k8s.yaml
   - service.k8s.yaml

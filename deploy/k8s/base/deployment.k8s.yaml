@@ -14,7 +14,7 @@ spec:
     spec:
       enableServiceLinks: false
       containers:
-        - name: auth
+        - name: ghdefaults
           image: ghcr.io/seankhliao/ghdefaults
           args:
             - -gh.app.id=file:///var/run/secrets/github/app-id
@@ -27,10 +27,3 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
-          volumeMounts:
-            - mountPath: /var/run/secrets/github
-              name: secrets
-      volumes:
-        - name: secrets
-          secret:
-            secretName: ghdefaults

@@ -5,9 +5,39 @@ buildMetadata:
   - managedByLabel
   - originAnnotations
 
+patches:
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ghdefaults
+      spec:
+        template:
+          spec:
+            containers:
+              - name: ghdefaults
+                volumeMounts:
+                  - mountPath: /var/run/secrets/github
+                    name: secrets
+            volumes:
+              - name: secrets
+                secret:
+                  secretName: ghdefaults
+
 generators:
-  - ksops.yaml
+  - |
+    apiVersion: viaduct.ai/v1
+    kind: ksops
+    metadata:
+      name: ghdefaults
+      annotations:
+        config.kubernetes.io/function: |
+          exec:
+            path: /opt/kustomize/ksops
+    files:
+      - secrets.enc.k8s.yaml
 
 resources:
   - ../base
+  - httproute.k8s.yaml
   - namespace.k8s.yaml
