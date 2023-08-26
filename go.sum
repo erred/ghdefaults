@@ -70,8 +70,8 @@ go.opentelemetry.io/otel/trace v1.16.0 h1:8JRpaObFoW0pxuVPapkgH8UhHQj+bJW8jJsCZE
 go.opentelemetry.io/otel/trace v1.16.0/go.mod h1:Yt9vYq1SdNz3xdjZZK7wcXv1qv2pwLkqr2QVwea0ef0=
 go.opentelemetry.io/proto/otlp v0.20.0 h1:BLOA1cZBAGSbRiNuGCCKiFrCdYB7deeHDeD1SueyOfA=
 go.opentelemetry.io/proto/otlp v0.20.0/go.mod h1:3QgjzPALBIv9pcknj2EXGPXjYPFdUh/RQfF8Lz3+Vnw=
-go.seankhliao.com/svcrunner/v3 v3.0.0-20230826105210-e777b25ddbb9 h1:hNxqNPRvks152lyJlJn2lLEVDriD+FMrlw3fy1TrcF0=
-go.seankhliao.com/svcrunner/v3 v3.0.0-20230826105210-e777b25ddbb9/go.mod h1:yonO7fT+73M5RUFXg1iZCdGw5NqpoxIsb9FxL7lkTv4=
+go.seankhliao.com/svcrunner/v3 v3.0.0-20230826121122-52a97a8823fa h1:PFZLiTv+6Q8XeOqzOHXVyuORXnuPptFPtMKovSksIlg=
+go.seankhliao.com/svcrunner/v3 v3.0.0-20230826121122-52a97a8823fa/go.mod h1:yonO7fT+73M5RUFXg1iZCdGw5NqpoxIsb9FxL7lkTv4=
 go.uber.org/goleak v1.2.1 h1:NBol2c7O1ZokfZ0LEU9K6Whx/KnwvepVetCUhtKja4A=
 go.uber.org/goleak v1.2.1/go.mod h1:qlT2yGI9QafXHhZZLxlSuNsMw3FFLxBr+tBRlmO1xH4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

@@ -8,7 +8,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0
 	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/trace v1.16.0
-	go.seankhliao.com/svcrunner/v3 v3.0.0-20230826105210-e777b25ddbb9
+	go.seankhliao.com/svcrunner/v3 v3.0.0-20230826121122-52a97a8823fa
 	golang.org/x/oauth2 v0.10.0
 )
 
