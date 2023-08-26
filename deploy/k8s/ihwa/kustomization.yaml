@@ -16,6 +16,19 @@ patches:
           spec:
             containers:
               - name: ghdefaults
+                env:
+                  - name: OTEL_SERVICE_NAME
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.labels['app.kubernetes.io/name']
+                  - name: POD_UID
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.uid
+                  - name: OTEL_RESOURCE_ATTRIBUTES
+                    value: k8s.pod.uid=$(POD_UID),k8s.cluster.name=ihwa,k8s.container.name=earbug
+                  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                    value: http://ingest.otelcol.svc:4317
                 volumeMounts:
                   - mountPath: /var/run/secrets/github
                     name: secrets
