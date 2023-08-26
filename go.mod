@@ -8,7 +8,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0
 	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/trace v1.16.0
-	go.seankhliao.com/svcrunner/v3 v3.0.0-20230825210239-4f5a0684e6c9
+	go.seankhliao.com/svcrunner/v3 v3.0.0-20230826105210-e777b25ddbb9
 	golang.org/x/oauth2 v0.10.0
 )
 
@@ -33,6 +33,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.20.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20230804165707-b4ddeeda5bc7 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
